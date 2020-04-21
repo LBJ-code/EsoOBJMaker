@@ -83,3 +83,27 @@ class DicomProcessor:
 
     def calc_k_on_ijk_coordinates(self, dicom_index):
         return (self.dicom_size - dicom_index - 1)
+
+    def make_distorted_dicom(self, ijk_eso_centers, img_eso_radius):
+        pad_eso_centers = self.liner_pad_list(ijk_eso_centers)
+        print("a")
+
+    def liner_pad_list(self, ijk_eso_centers):
+        pad_center_list = []
+        Is_first = True
+        prev_index = 0
+        for index, eso_center in enumerate(ijk_eso_centers):
+            if (eso_center is not None) and Is_first:
+                prev_index = index
+                Is_first = False
+            elif (eso_center is not None) and (Is_first is not True):
+                item_distance = index - prev_index
+                if item_distance != 1:
+                    average_weight = 1 / item_distance
+                    for new_index in range((prev_index + 1), index, 1):
+                        pad_center = (ijk_eso_centers[prev_index] * (average_weight * (index - new_index)) +
+                                      ijk_eso_centers[index] * (average_weight * (new_index - prev_index)))
+                        pad_center_list[new_index] = pad_center
+                prev_index = index
+            pad_center_list.append(eso_center)
+        return pad_center_list

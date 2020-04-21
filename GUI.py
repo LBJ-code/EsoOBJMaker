@@ -82,6 +82,7 @@ class GUIController:
         # click export
         if event == cv2.EVENT_LBUTTONUP and ((2 * self.button_width) < x and x < (3 * self.button_width)):
             print("click export")
+            self.dicom_processor.make_distorted_dicom(self.ijk_eso_centers, self.img_eso_radius)
             eso_obj_maker = EsoOBJMaker(self.ijk_eso_centers, self.img_eso_radius,
                                         self.dicom_processor.calc_ijk2LPS_mat(),  self.args)
             eso_obj_maker.create_obj()
@@ -98,13 +99,13 @@ class GUIController:
             non_zoomed_i, non_zoomed_j = self.calc_non_zoomed_ij(x, y, zoom_i_ratio, zoom_j_ratio)
             print('clicked i:{} j:{} k:{}'.format(non_zoomed_i, non_zoomed_j,
                                                   self.dicom_processor.calc_k_on_ijk_coordinates(self.dicom_index)))
-            self.ijk_eso_centers[self.dicom_index] = (non_zoomed_i, non_zoomed_j,
-                                                      self.dicom_processor.calc_k_on_ijk_coordinates(self.dicom_index))
+            self.ijk_eso_centers[self.dicom_index] = np.array([non_zoomed_i, non_zoomed_j,
+                                                      self.dicom_processor.calc_k_on_ijk_coordinates(self.dicom_index)])
         elif event is cv2.EVENT_LBUTTONUP and self.Is_zoomed is False:
             cv2.circle(self.CT_img_for_show, (x, y), 5, (0, 0, 255), -1, lineType=cv2.LINE_AA)
             cv2.circle(self.CT_img_for_show, (x, y), int(self.img_eso_radius), (200, 50, 50), lineType=cv2.LINE_AA)
             print('clicked i:{} j:{} k:{}'.format(x, y, self.dicom_processor.calc_k_on_ijk_coordinates(self.dicom_index)))
-            self.ijk_eso_centers[self.dicom_index] = (x, y, self.dicom_processor.calc_k_on_ijk_coordinates(self.dicom_index))
+            self.ijk_eso_centers[self.dicom_index] = np.array([x, y, self.dicom_processor.calc_k_on_ijk_coordinates(self.dicom_index)])
         elif event is cv2.EVENT_RBUTTONUP and self.Is_zoomed is False:
             self.zoom_function(x, y)
         elif event is cv2.EVENT_RBUTTONUP and self.Is_zoomed is True:
