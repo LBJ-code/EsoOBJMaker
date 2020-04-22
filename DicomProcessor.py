@@ -3,6 +3,7 @@ import glob
 import sys, os
 import numpy as np
 import cv2
+import utils
 
 class DicomProcessor:
 
@@ -82,11 +83,18 @@ class DicomProcessor:
         return self.row2uint8(CT_row)
 
     def calc_k_on_ijk_coordinates(self, dicom_index):
-        return (self.dicom_size - dicom_index - 1)
+        return self.dicom_size - dicom_index - 1
 
     def make_distorted_dicom(self, ijk_eso_centers, img_eso_radius):
         pad_eso_centers = self.liner_pad_list(ijk_eso_centers)
-        print("a")
+        for dicom_index, eso_center in enumerate(pad_eso_centers):
+            if eso_center is not None:
+                integer_eso_center = [int(eso_center[0] + 0.5), int(eso_center[1] + 0.5)]
+                CT_img = self.get_CT_by_index(dicom_index)
+                _, bin_CT_img = cv2.threshold(CT_img[:, :, 0], 0, 255, cv2.THRESH_OTSU)
+                cv2.imshow("bin", bin_CT_img[:, :, np.newaxis])
+                eso_mask = utils.region_growing(bin_CT_img, (integer_eso_center[1], integer_eso_center[0]))
+                edge_rc = utils.get_8_neighbor(eso_mask, (integer_eso_center[1], integer_eso_center[0]))
 
     def liner_pad_list(self, ijk_eso_centers):
         pad_center_list = []
