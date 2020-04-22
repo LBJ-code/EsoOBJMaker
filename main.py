@@ -11,6 +11,7 @@ parser.add_argument("--eso_radius", type=float, default=15.0, help='mm単位で�
 parser.add_argument("--circle_divisions", type=int, default=50, help='食道モデルの半径方向への分解能')
 parser.add_argument("--spline_num", type=int, default=10, help='食道の中心点間を補完する点の数')
 parser.add_argument("--magnification_ratio", type=int, default=4, help='ダブルクリック時の拡大倍率（偶数のほうがいいかも）')
+parser.add_argument("--original_eso_radius", type=int, default=5, help="TPS用の画像中の食道半径")
 args = parser.parse_args()
 
 if __name__ == '__main__':

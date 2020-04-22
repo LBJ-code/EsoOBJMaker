@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+import math
 
 def region_growing(bin_mat, seed):
     new_points = [seed]
@@ -24,7 +25,7 @@ def region_growing(bin_mat, seed):
     return mask
 
 
-def get_8_neighbor(mask, center_rc):
+def get_8_neighbor_with_mask(mask, center_rc):
     bin_mat = 255 * mask.astype(np.uint8)
     test = 255 * bin_mat[:, :, np.newaxis].astype(np.uint8)
     test = cv2.cvtColor(test, cv2.COLOR_GRAY2BGR)
@@ -51,3 +52,19 @@ def get_8_neighbor(mask, center_rc):
     cv2.imshow("test", test)
     cv2.waitKey(1)
     return edges_rc
+
+
+def get_8neighbors_with_radius(src_radius, center_rc):
+    # get_vertical points
+    TPS_src_rc = []
+    init_relative_vector = np.array([0, src_radius])
+    center_xy_array = np.array([center_rc[1], center_rc[0]])
+    step_theta = 45
+    theta = 0
+    for i in range(8):
+        rotate_mat = np.array([[math.cos(math.radians(theta)), -math.sin(math.radians(theta))],
+                               [math.sin(math.radians(theta)), math.cos(math.radians(theta))]])
+        src_wall_point = center_xy_array + np.dot(rotate_mat, np.transpose(init_relative_vector))
+        TPS_src_rc.append(np.array([int(src_wall_point[1] + 0.5), int(src_wall_point[0] + 0.5)]))
+        theta += step_theta
+    return TPS_src_rc

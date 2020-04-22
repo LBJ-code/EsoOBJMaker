@@ -5,9 +5,10 @@ import numpy as np
 import cv2
 import utils
 
+
 class DicomProcessor:
 
-    def __init__(self, dicom_dir):
+    def __init__(self, dicom_dir, args):
         self.dicom_dir = dicom_dir
         self.dicom_file_list = glob.glob(os.path.join(dicom_dir, '*'))
         self.dicom_size = len(self.dicom_file_list)
@@ -23,6 +24,8 @@ class DicomProcessor:
         #なぜか3DSlicer上ではSが-0.25されている
         self.image_position_patient[2] -= 2.5
         self.CT_for_imshow = self.load_initial_CT()
+        self.original_eso_radius = args.original_eso_radius
+        self.target_eso_radius = int(args.eso_radius / self.pixel_spacing_dx)
 
     def calc_ijk2LPS_mat(self, dst=None):
         ijk_samples = self.calc_ijk_samples()
@@ -91,10 +94,22 @@ class DicomProcessor:
             if eso_center is not None:
                 integer_eso_center = [int(eso_center[0] + 0.5), int(eso_center[1] + 0.5)]
                 CT_img = self.get_CT_by_index(dicom_index)
+                src_8neigobors_rc = utils.get_8neighbors_with_radius(self.original_eso_radius, eso_center)
+                for rc in src_8neigobors_rc:
+                    cv2.circle(CT_img, (rc[1], rc[0]), 2, (0, 0, 200), -1)
+                target_8neigobors_rc = utils.get_8neighbors_with_radius(self.target_eso_radius, eso_center)
+                for rc in target_8neigobors_rc:
+                    cv2.circle(CT_img, (rc[1], rc[0]), 2, (0, 0, 200), -1)
+                #cv2.circle(CT_img, (eso_center[1], eso_center[0]), self.target_eso_radius, (200, 0, 0), 1)
+                cv2.imshow("test", CT_img)
+                cv2.waitKey(0)
+                '''
                 _, bin_CT_img = cv2.threshold(CT_img[:, :, 0], 0, 255, cv2.THRESH_OTSU)
                 cv2.imshow("bin", bin_CT_img[:, :, np.newaxis])
                 eso_mask = utils.region_growing(bin_CT_img, (integer_eso_center[1], integer_eso_center[0]))
                 edge_rc = utils.get_8_neighbor(eso_mask, (integer_eso_center[1], integer_eso_center[0]))
+                '''
+
 
     def liner_pad_list(self, ijk_eso_centers):
         pad_center_list = []

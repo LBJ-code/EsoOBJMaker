@@ -12,7 +12,7 @@ class GUIController:
         self.args = args
         self.Is_continue = True
         self.Is_zoomed = False
-        self.dicom_processor = DicomProcessor(args.dicom_dir)
+        self.dicom_processor = DicomProcessor(args.dicom_dir, args)
         self.dicom_size = len(self.dicom_processor.dicom_file_list)
         self.CT_img_for_show = self.dicom_processor.CT_for_imshow
         self.cur_src_CT_img = self.CT_img_for_show
