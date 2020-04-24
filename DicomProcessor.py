@@ -9,6 +9,7 @@ import utils
 class DicomProcessor:
 
     def __init__(self, dicom_dir, args):
+        self.args = args
         self.dicom_dir = dicom_dir
         self.dicom_file_list = glob.glob(os.path.join(dicom_dir, '*'))
         self.dicom_size = len(self.dicom_file_list)
@@ -18,6 +19,8 @@ class DicomProcessor:
             raise
 
         sample_dfile = pydicom.read_file(self.dicom_file_list[0])
+        self.dicom_row_num = sample_dfile.Rows
+        self.dicom_col_num = sample_dfile.Columns
         self.pixel_spacing_dx, self.pixel_spacing_dy = sample_dfile.PixelSpacing
         self.slice_thickness = sample_dfile.SliceThickness
         self.image_position_patient = sample_dfile.ImagePositionPatient
@@ -90,24 +93,70 @@ class DicomProcessor:
 
     def make_distorted_dicom(self, ijk_eso_centers, img_eso_radius):
         pad_eso_centers = self.liner_pad_list(ijk_eso_centers)
+        os.makedirs(self.args.out_dicom_dir, exist_ok=True)
+        if (self.dicom_col_num % 2 != 0) and (self.dicom_row_num % 2 != 0):
+            print('It may not be able to get correct dicom image. In detail, please ask to Yukiya')
+            raise
+        half_col_num = self.dicom_col_num / 2
+        half_row_num = self.dicom_row_num / 2
+        fixed_points = np.array([[half_col_num, self.dicom_row_num], [self.dicom_col_num, self.dicom_row_num],
+                                 [self.dicom_col_num, half_row_num], [self.dicom_col_num, 0],
+                                 [half_col_num, 0], [0, 0],
+                                 [0, half_row_num], [0, self.dicom_row_num]], dtype=np.float32)
         for dicom_index, eso_center in enumerate(pad_eso_centers):
-            if eso_center is not None:
+            print("a")
+            file_name = os.path.basename(self.dicom_file_list[dicom_index])
+            new_dicom_path = os.path.join(self.args.out_dicom_dir, file_name)
+            if eso_center is None:
+                d = pydicom.read_file(self.dicom_file_list[dicom_index])
+                #d.save_as(new_dicom_path)
+                d.save_as(self.dicom_file_list[dicom_index])
+            else:
+                d = pydicom.read_file(self.dicom_file_list[dicom_index])
+                show_CT_img = self.get_CT_by_index(dicom_index)
+                cv2.imshow("src", show_CT_img)
+                src_8neighbors = utils.get_8neighbors_with_radius(self.original_eso_radius, eso_center)
+                target_8neighbors = utils.get_8neighbors_with_radius(self.target_eso_radius, eso_center)
+
+                src_points = np.vstack((src_8neighbors, fixed_points)).reshape((1, -1, 2))
+                target_points = np.vstack((target_8neighbors, fixed_points)).reshape((1, -1, 2))
+
+                matches = list()
+                for i in range(len(src_points[0, :, :])):
+                    matches.append(cv2.DMatch(i, i, 0))
+
+                tps = cv2.createThinPlateSplineShapeTransformer()
+                tps.estimateTransformation(target_points, src_points, matches)
+                out = tps.warpImage(d.pixel_array)
+                show_out = tps.warpImage(show_CT_img[:, :, 0])
+                cv2.imshow("distorted", show_out)
+
+                cv2.waitKey(100)
+
+                d.save_as(self.dicom_file_list[dicom_index])
+                '''
                 integer_eso_center = [int(eso_center[0] + 0.5), int(eso_center[1] + 0.5)]
                 CT_img = self.get_CT_by_index(dicom_index)
+                show_CT_img = self.get_CT_by_index(dicom_index)
                 src_8neigobors_rc = utils.get_8neighbors_with_radius(self.original_eso_radius, eso_center)
+                src_8neighbors_xy = []
                 for rc in src_8neigobors_rc:
-                    cv2.circle(CT_img, (rc[1], rc[0]), 2, (0, 0, 200), -1)
+                    cv2.circle(show_CT_img, (rc[1], rc[0]), 2, (0, 0, 200), -1)
+                    src_8neighbors_xy.append(utils.convert_rc_to_cv2point(rc))
+                src_8neighbors_xy = np.array(src_8neighbors_xy, dtype=np.float32)
+
                 target_8neigobors_rc = utils.get_8neighbors_with_radius(self.target_eso_radius, eso_center)
+                target_8neighbors_xy = []
                 for rc in target_8neigobors_rc:
-                    cv2.circle(CT_img, (rc[1], rc[0]), 2, (0, 0, 200), -1)
+                    cv2.circle(show_CT_img, (rc[1], rc[0]), 2, (200, 0, 0), -1)
+                    target_8neighbors_xy.append(utils.convert_rc_to_cv2point(rc))
+                target_8neighbors_xy = np.array(target_8neighbors_xy, dtype=np.float32)
                 #cv2.circle(CT_img, (eso_center[1], eso_center[0]), self.target_eso_radius, (200, 0, 0), 1)
-                cv2.imshow("test", CT_img)
+                cv2.imshow("test", show_CT_img)
+                cv2.waitKey(1)
+                distorted_mat = utils.thin_plate_spline(src_8neighbors_xy, target_8neighbors_xy, CT_img)
+                cv2.imshow("dist", distorted_mat)
                 cv2.waitKey(0)
-                '''
-                _, bin_CT_img = cv2.threshold(CT_img[:, :, 0], 0, 255, cv2.THRESH_OTSU)
-                cv2.imshow("bin", bin_CT_img[:, :, np.newaxis])
-                eso_mask = utils.region_growing(bin_CT_img, (integer_eso_center[1], integer_eso_center[0]))
-                edge_rc = utils.get_8_neighbor(eso_mask, (integer_eso_center[1], integer_eso_center[0]))
                 '''
 
 

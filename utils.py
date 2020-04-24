@@ -56,15 +56,42 @@ def get_8_neighbor_with_mask(mask, center_rc):
 
 def get_8neighbors_with_radius(src_radius, center_rc):
     # get_vertical points
-    TPS_src_rc = []
+    TPS_src_xy = []
     init_relative_vector = np.array([0, src_radius])
-    center_xy_array = np.array([center_rc[1], center_rc[0]])
+    center_xy_array = np.array([center_rc[0], center_rc[1]])
     step_theta = 45
     theta = 0
     for i in range(8):
         rotate_mat = np.array([[math.cos(math.radians(theta)), -math.sin(math.radians(theta))],
                                [math.sin(math.radians(theta)), math.cos(math.radians(theta))]])
         src_wall_point = center_xy_array + np.dot(rotate_mat, np.transpose(init_relative_vector))
-        TPS_src_rc.append(np.array([int(src_wall_point[1] + 0.5), int(src_wall_point[0] + 0.5)]))
+        TPS_src_xy.append(np.array([src_wall_point[0], src_wall_point[1]], dtype=np.float32))
         theta += step_theta
-    return TPS_src_rc
+    TPS_src_xy = np.array(TPS_src_xy, dtype=np.float32)
+    return TPS_src_xy
+
+
+def thin_plate_spline(sshape, tshape, src_mat, n_matches=8):
+    tps = cv2.createThinPlateSplineShapeTransformer()
+
+    sshape = np.array(sshape, dtype=np.float32)
+    tshape = np.array(tshape, dtype=np.float32)
+    sshape = sshape.reshape((1, -1, 2))
+    tshape = tshape.reshape((1, -1, 2))
+
+    matches = list()
+    for i in range(n_matches):
+        matches.append(cv2.DMatch(i, i, 0))
+
+    tps.estimateTransformation(sshape, tshape, matches)
+
+    ret, tshape_ = tps.applyTransformation(sshape)
+
+    tps.estimateTransformation(tshape, sshape, matches)
+
+    distorted_mat = tps.warpImage(src_mat)
+    return distorted_mat
+
+
+def convert_rc_to_cv2point(rc):
+    return [rc[1], rc[0]]

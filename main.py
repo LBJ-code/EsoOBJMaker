@@ -5,6 +5,7 @@ from DicomProcessor import DicomProcessor
 parser = argparse.ArgumentParser()
 parser.add_argument("--dicom_dir", type=str, required=True, help="DICOMファイルへのパス")
 parser.add_argument("--output_dir", type=str, default="./tmp", help='OBJファイルの出力先を指定')
+parser.add_argument("--out_dicom_dir", type=str, default="./extend_dicom_tmp", help='食道拡張を行ったdicomの出力先')
 parser.add_argument("--resized_button_height", type=int, default=154, help="メニューボタンの高さ")
 parser.add_argument("--resized_button_width", type=int, default=314, help="メニューボタンの幅")
 parser.add_argument("--eso_radius", type=float, default=15.0, help='mm単位で食道モデルの半径を指定')
