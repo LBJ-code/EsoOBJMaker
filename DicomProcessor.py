@@ -108,11 +108,11 @@ class DicomProcessor:
             file_name = os.path.basename(self.dicom_file_list[dicom_index])
             new_dicom_path = os.path.join(self.args.out_dicom_dir, file_name)
             if eso_center is None:
-                d = pydicom.read_file(self.dicom_file_list[dicom_index])
+                ds = pydicom.dcmread(self.dicom_file_list[dicom_index])
                 #d.save_as(new_dicom_path)
-                d.save_as(self.dicom_file_list[dicom_index])
+                #d.save_as(self.dicom_file_list[dicom_index])
+                ds.save_as(new_dicom_path)
             else:
-                d = pydicom.read_file(self.dicom_file_list[dicom_index])
                 show_CT_img = self.get_CT_by_index(dicom_index)
                 cv2.imshow("src", show_CT_img)
                 src_8neighbors = utils.get_8neighbors_with_radius(self.original_eso_radius, eso_center)
@@ -127,37 +127,17 @@ class DicomProcessor:
 
                 tps = cv2.createThinPlateSplineShapeTransformer()
                 tps.estimateTransformation(target_points, src_points, matches)
-                out = tps.warpImage(d.pixel_array)
+                ds = pydicom.read_file(self.dicom_file_list[dicom_index])
+                ds.decompress()
+                out = tps.warpImage(ds.pixel_array)
                 show_out = tps.warpImage(show_CT_img[:, :, 0])
                 cv2.imshow("distorted", show_out)
 
                 cv2.waitKey(100)
 
-                d.save_as(self.dicom_file_list[dicom_index])
-                '''
-                integer_eso_center = [int(eso_center[0] + 0.5), int(eso_center[1] + 0.5)]
-                CT_img = self.get_CT_by_index(dicom_index)
-                show_CT_img = self.get_CT_by_index(dicom_index)
-                src_8neigobors_rc = utils.get_8neighbors_with_radius(self.original_eso_radius, eso_center)
-                src_8neighbors_xy = []
-                for rc in src_8neigobors_rc:
-                    cv2.circle(show_CT_img, (rc[1], rc[0]), 2, (0, 0, 200), -1)
-                    src_8neighbors_xy.append(utils.convert_rc_to_cv2point(rc))
-                src_8neighbors_xy = np.array(src_8neighbors_xy, dtype=np.float32)
-
-                target_8neigobors_rc = utils.get_8neighbors_with_radius(self.target_eso_radius, eso_center)
-                target_8neighbors_xy = []
-                for rc in target_8neigobors_rc:
-                    cv2.circle(show_CT_img, (rc[1], rc[0]), 2, (200, 0, 0), -1)
-                    target_8neighbors_xy.append(utils.convert_rc_to_cv2point(rc))
-                target_8neighbors_xy = np.array(target_8neighbors_xy, dtype=np.float32)
-                #cv2.circle(CT_img, (eso_center[1], eso_center[0]), self.target_eso_radius, (200, 0, 0), 1)
-                cv2.imshow("test", show_CT_img)
-                cv2.waitKey(1)
-                distorted_mat = utils.thin_plate_spline(src_8neighbors_xy, target_8neighbors_xy, CT_img)
-                cv2.imshow("dist", distorted_mat)
-                cv2.waitKey(0)
-                '''
+                #pydicom.encaps.encapsulate([d.PixelData])
+                ds.PixelData = out.tobytes()
+                ds.save_as(new_dicom_path)
 
 
     def liner_pad_list(self, ijk_eso_centers):
